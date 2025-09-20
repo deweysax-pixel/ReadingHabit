@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-cream text-midnight font-sans;
+  background-image: radial-gradient(circle at top left, rgba(199, 184, 255, 0.35), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(123, 223, 242, 0.4), transparent 45%);
+  min-height: 100vh;
+}
+
+a {
+  @apply text-midnight underline-offset-4 decoration-lavender;
+}
+
+button {
+  @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-turquoise focus-visible:ring-offset-2 focus-visible:ring-offset-cream;
+}
+
+.gradient-sheen {
+  background: linear-gradient(120deg, rgba(199, 184, 255, 0.6), rgba(123, 223, 242, 0.6), rgba(251, 210, 192, 0.6));
+  background-size: 200% 200%;
+  animation: sheen 10s ease infinite;
+}
+
+@keyframes sheen {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.flip-card {
+  perspective: 1000px;
+}
+
+.flip-card-inner {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s;
+}
+
+.flip-card.flipped .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-face {
+  backface-visibility: hidden;
+}
+
+.flip-card-face.back {
+  transform: rotateY(180deg);
+}
