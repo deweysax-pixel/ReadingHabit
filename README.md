@@ -63,3 +63,31 @@
 - **Tests** : Vitest + Playwright.
 - **CI** : GitHub Actions.
 
+apps/
+web/ # Next.js
+packages/
+ui/ # composants réutilisables (Card, Badge, Progress)
+core/ # logique métier (planning, SR, scoring)
+db/ # schémas Prisma/Drizzle
+
+
+---
+
+## 🗃️ Modèle de données (MVP)
+(...)
+
+## 🔁 Spaced Repetition (simple, MVP)
+(...)
+
+## 🧰 Mise en route (dev)
+(...)
+
+## 🗺️ Roadmap
+(...)
+
+## 🤝 Contribuer
+(...)
+
+## 📜 Licence
+MIT — fais-en bon usage, contribue si tu l’améliores 🙌
+
