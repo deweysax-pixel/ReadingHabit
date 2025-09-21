@@ -3,11 +3,15 @@ import { BookRecommendation, getFallbackRecommendations } from '@/lib/recommenda
 
 type RecommendationPayload = {
   themes?: string[];
+  query?: string;
 };
 
 const OPENAI_MODEL = 'gpt-4o-mini';
 
-async function requestRecommendationsFromOpenAI(themes: string[]): Promise<BookRecommendation[] | null> {
+async function requestRecommendationsFromOpenAI(
+  themes: string[],
+  query?: string
+): Promise<BookRecommendation[] | null> {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -17,7 +21,9 @@ async function requestRecommendationsFromOpenAI(themes: string[]): Promise<BookR
   const systemPrompt =
     "Tu es un conseiller littéraire spécialisé dans les routines de lecture professionnelles. Propose cinq livres inspirants en français ou anglais qui correspondent aux thématiques données. Chaque proposition doit inclure un titre, un auteur, la thématique associée et une courte raison motivante.";
 
-  const userPrompt = `Thématiques sélectionnées : ${themes.join(', ')}. Réponds en JSON strict avec le format {"books": [{"id": string, "title": string, "author": string, "theme": string, "description": string}]}. Assure-toi de fournir exactement cinq livres uniques.`;
+  const userPrompt = `Thématiques sélectionnées : ${themes.join(', ')}.
+${query ? `L'utilisateur précise : "${query}".` : ''}
+Réponds en JSON strict avec le format {"books": [{"id": string, "title": string, "author": string, "theme": string, "description": string}]}. Assure-toi de fournir exactement cinq livres uniques alignés avec la demande.`;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -92,6 +98,7 @@ async function requestRecommendationsFromOpenAI(themes: string[]): Promise<BookR
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as RecommendationPayload | null;
   const themes = Array.isArray(body?.themes) ? body?.themes.filter(Boolean) : [];
+  const query = body?.query?.trim();
 
   if (!themes.length) {
     return NextResponse.json(
@@ -102,9 +109,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const aiRecommendations = await requestRecommendationsFromOpenAI(themes);
-  const books = aiRecommendations ?? getFallbackRecommendations(themes);
+  const aiRecommendations = await requestRecommendationsFromOpenAI(themes, query);
+  const books = aiRecommendations ?? getFallbackRecommendations(themes, query);
+  const reply = query
+    ? `Voici un titre ${themes.length > 1 ? 'parmi ta sélection' : 'aligné avec ta thématique'} qui devrait t'enchanter : ${books[0].title} de ${books[0].author}. Je te prépare aussi d'autres idées pour comparer.`
+    : undefined;
 
-  return NextResponse.json({ books });
+  return NextResponse.json({ books, reply });
 }
 

@@ -8,6 +8,12 @@ import type { BookRecommendation } from '@/lib/recommendations';
 
 const THEMES = ['Leadership', 'Coaching', 'Self-Awareness', 'Communication', 'Créativité', 'Stratégie'];
 
+type ChatMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+};
+
 export default function OnboardingPage() {
   const [selectedThemes, setSelectedThemes] = useState<string[]>(['Leadership', 'Self-Awareness']);
   const [minutes, setMinutes] = useState(20);
@@ -15,6 +21,16 @@ export default function OnboardingPage() {
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
   const [loadingBooks, setLoadingBooks] = useState(false);
   const [bookError, setBookError] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: 'intro',
+      role: 'assistant',
+      content:
+        'Hello, je suis Mia 🤖. Donne-moi quelques envies et je te souffle un livre irrésistible dans tes thématiques !',
+    },
+  ]);
+  const [chatInput, setChatInput] = useState('Peux-tu me trouver un livre axé sur le leadership collaboratif ?');
+  const [chatLoading, setChatLoading] = useState(false);
   const encouragement = useMemo(() => getRandomEncouragement(), []);
 
   const toggleTheme = (theme: string) => {
@@ -23,46 +39,87 @@ export default function OnboardingPage() {
     );
   };
 
-  const fetchRecommendations = useCallback(async () => {
-    if (!selectedThemes.length) {
-      setBookOptions([]);
-      setSelectedBookId(null);
-      return;
-    }
-
-    try {
-      setLoadingBooks(true);
-      setBookError(null);
-      const response = await fetch('/api/recommendations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ themes: selectedThemes }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Impossible de récupérer les recommandations.');
+  const fetchRecommendations = useCallback(
+    async (query?: string) => {
+      if (!selectedThemes.length) {
+        setBookOptions([]);
+        setSelectedBookId(null);
+        return null;
       }
 
-      const data = (await response.json()) as { books: BookRecommendation[] };
-      setBookOptions(data.books);
-      setSelectedBookId(data.books[0]?.id ?? null);
-    } catch (error) {
-      console.error(error);
-      setBookError("Oups, l'IA a besoin d'une petite pause. Réessaie dans un instant.");
-      setBookOptions([]);
-      setSelectedBookId(null);
-    } finally {
-      setLoadingBooks(false);
-    }
-  }, [selectedThemes]);
+      try {
+        setLoadingBooks(true);
+        if (query) {
+          setChatLoading(true);
+        }
+        setBookError(null);
+        const response = await fetch('/api/recommendations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ themes: selectedThemes, query }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Impossible de récupérer les recommandations.');
+        }
+
+        const data = (await response.json()) as { books: BookRecommendation[]; reply?: string };
+        setBookOptions(data.books);
+        setSelectedBookId(data.books[0]?.id ?? null);
+        return data;
+      } catch (error) {
+        console.error(error);
+        setBookError("Oups, l'IA a besoin d'une petite pause. Réessaie dans un instant.");
+        setBookOptions([]);
+        setSelectedBookId(null);
+        return null;
+      } finally {
+        setLoadingBooks(false);
+        setChatLoading(false);
+      }
+    },
+    [selectedThemes]
+  );
 
   useEffect(() => {
     void fetchRecommendations();
   }, [fetchRecommendations]);
 
   const selectedBook = bookOptions.find((book) => book.id === selectedBookId) ?? null;
+
+  const handleSendChat = async () => {
+    const trimmed = chatInput.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    const newUserMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: trimmed,
+    };
+    setChatMessages((prev) => [...prev, newUserMessage]);
+    setChatInput('');
+
+    const data = await fetchRecommendations(trimmed);
+    const bestBook = data?.books?.[0];
+
+    const assistantReply = data?.reply
+      ? data.reply
+      : bestBook
+      ? `Je te recommande ${bestBook.title} de ${bestBook.author}. Il colle parfaitement à ton envie !`
+      : "Je cherche encore la perle rare... vérifie ta connexion ou retente dans un instant.";
+
+    const newAssistantMessage: ChatMessage = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: assistantReply,
+    };
+
+    setChatMessages((prev) => [...prev, newAssistantMessage]);
+  };
 
   return (
     <section className="space-y-10">
@@ -131,6 +188,59 @@ export default function OnboardingPage() {
           </p>
         </Card>
       </div>
+
+      <Card tone="turquoise" className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-2xl">🤖</div>
+          <div>
+            <h3 className="text-xl font-semibold text-midnight">Chat avec Mia</h3>
+            <p className="text-sm text-midnight/70">
+              Pose-lui une question pour affiner ta recherche dans les thèmes sélectionnés.
+            </p>
+          </div>
+        </div>
+        <div className="max-h-72 space-y-3 overflow-y-auto pr-1 text-sm">
+          {chatMessages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <span
+                className={`inline-flex max-w-[80%] rounded-2xl px-4 py-2 leading-relaxed shadow-sm transition ${
+                  message.role === 'user' ? 'bg-midnight text-white' : 'bg-white/90 text-midnight'
+                }`}
+              >
+                {message.content}
+              </span>
+            </div>
+          ))}
+          {chatLoading && (
+            <div className="flex justify-start text-midnight/70">Mia réfléchit à ta prochaine pépite…</div>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            value={chatInput}
+            onChange={(event) => setChatInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                void handleSendChat();
+              }
+            }}
+            placeholder="Demande un style, une ambiance ou un besoin précis"
+            className="flex-1 rounded-full border border-white/70 bg-white/80 px-4 py-2 text-sm text-midnight placeholder:text-midnight/40 focus:border-white focus:outline-none focus:ring-2 focus:ring-white/60"
+          />
+          <button
+            type="button"
+            onClick={() => void handleSendChat()}
+            className="inline-flex items-center gap-2 rounded-full bg-midnight px-5 py-2 text-sm font-semibold text-white transition hover:bg-midnight/90 disabled:cursor-not-allowed disabled:bg-midnight/40"
+            disabled={chatLoading || !selectedThemes.length}
+          >
+            Envoyer
+          </button>
+        </div>
+      </Card>
 
       <Card className="space-y-6">
         <div className="flex flex-col gap-1">
@@ -203,4 +313,3 @@ export default function OnboardingPage() {
     </section>
   );
 }
-

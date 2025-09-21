@@ -105,18 +105,31 @@ const BASE_RECOMMENDATIONS: BookRecommendation[] = [
   },
 ];
 
-export function getFallbackRecommendations(themes: string[]): BookRecommendation[] {
-  if (!themes.length) {
-    return BASE_RECOMMENDATIONS.slice(0, 5);
+export function getFallbackRecommendations(themes: string[], query?: string): BookRecommendation[] {
+  const normalizedQuery = query?.toLowerCase();
+
+  const shortlist = themes.length
+    ? BASE_RECOMMENDATIONS.filter((book) => themes.includes(book.theme))
+    : BASE_RECOMMENDATIONS;
+
+  const ranked = normalizedQuery
+    ? [...shortlist].sort((a, b) => {
+        const score = (book: BookRecommendation) => {
+          const haystack = `${book.title} ${book.author} ${book.theme} ${book.description}`.toLowerCase();
+          return haystack.includes(normalizedQuery) ? 1 : 0;
+        };
+        return score(b) - score(a);
+      })
+    : shortlist;
+
+  const topFive = ranked.slice(0, 5);
+
+  if (topFive.length === 5) {
+    return topFive;
   }
 
-  const themed = BASE_RECOMMENDATIONS.filter((book) => themes.includes(book.theme));
-  const others = BASE_RECOMMENDATIONS.filter((book) => !themes.includes(book.theme));
+  const remaining = BASE_RECOMMENDATIONS.filter((book) => !topFive.includes(book));
 
-  const results = [...themed, ...others].slice(0, 5);
-
-  return results.length < 5
-    ? [...results, ...BASE_RECOMMENDATIONS.filter((book) => !results.includes(book))].slice(0, 5)
-    : results;
+  return [...topFive, ...remaining].slice(0, 5);
 }
 
