@@ -15,10 +15,15 @@ export function Flashcard({ insight, action, tag }: FlashcardProps) {
   return (
     <button
       type="button"
+      aria-pressed={flipped}
       onClick={() => setFlipped((prev) => !prev)}
-      className={cn('flip-card w-full max-w-sm rounded-3xl bg-transparent text-left focus:outline-none')}
+      className={cn(
+        'flip-card w-full max-w-sm rounded-3xl bg-transparent text-left focus:outline-none focus-visible:ring-0',
+        'min-h-[260px]',
+        flipped && 'flipped'
+      )}
     >
-      <div className={cn('flip-card-inner rounded-3xl shadow-dreamy', flipped && 'flipped')}>
+      <div className={cn('flip-card-inner min-h-[260px] rounded-3xl shadow-dreamy')}>
         <div className="flip-card-face front rounded-3xl bg-white/80 p-6">
           <span className="inline-flex items-center gap-2 rounded-full bg-lavender/40 px-3 py-1 text-xs font-semibold text-midnight/70">
             📌 {tag}

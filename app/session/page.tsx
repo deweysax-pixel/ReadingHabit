@@ -33,9 +33,15 @@ export default function SessionPage() {
     () => (themesParam ? themesParam.split(',').filter(Boolean) : ['Leadership']),
     [themesParam]
   );
-  const minutes = Number(searchParams.get('minutes') ?? 20);
+  const rawMinutes = Number(searchParams.get('minutes'));
+  const minutes = Number.isFinite(rawMinutes) && rawMinutes > 0 ? rawMinutes : 20;
 
   const refreshRecommendations = useCallback(async () => {
+    if (!selectedThemes.length) {
+      setNextOptions([]);
+      return;
+    }
+
     try {
       setIsRefreshing(true);
       const response = await fetch('/api/recommendations', {

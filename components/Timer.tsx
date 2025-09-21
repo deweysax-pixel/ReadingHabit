@@ -19,7 +19,8 @@ const formatTime = (seconds: number) => {
 };
 
 export function Timer({ initialMinutes, onComplete }: TimerProps) {
-  const initialSeconds = initialMinutes * 60;
+  const normalizedMinutes = Number.isFinite(initialMinutes) && initialMinutes > 0 ? initialMinutes : 1;
+  const initialSeconds = Math.round(normalizedMinutes * 60);
   const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
   const [isRunning, setIsRunning] = useState(false);
   const [encouragement, setEncouragement] = useState(getRandomEncouragement());
@@ -44,12 +45,24 @@ export function Timer({ initialMinutes, onComplete }: TimerProps) {
   }, [isRunning, onComplete, secondsLeft]);
 
   useEffect(() => {
+    setSecondsLeft(initialSeconds);
+    setIsRunning(false);
+    setEncouragement(getRandomEncouragement());
+  }, [initialSeconds]);
+
+  useEffect(() => {
     if (!isRunning) return;
     const pulse = setInterval(() => setEncouragement(getRandomEncouragement()), 45_000);
     return () => clearInterval(pulse);
   }, [isRunning]);
 
-  const progress = useMemo(() => ((initialSeconds - secondsLeft) / initialSeconds) * 100, [initialSeconds, secondsLeft]);
+  const progress = useMemo(() => {
+    if (initialSeconds <= 0) {
+      return 100;
+    }
+
+    return ((initialSeconds - secondsLeft) / initialSeconds) * 100;
+  }, [initialSeconds, secondsLeft]);
 
   const resetTimer = () => {
     setSecondsLeft(initialSeconds);
